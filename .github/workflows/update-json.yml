@@ -1,0 +1,47 @@
+name: Update JSON
+
+on:
+  workflow_dispatch:      # handmatig starten
+  push:
+    branches: [ main ]    # of jouw default branch
+
+jobs:
+  update-json:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write     # <-- SUPER BELANGRIJK!!
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: true   # <-- NODIG voor pushen!
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run Python script to generate JSON
+        run: |
+          pip install -r requirements.txt || true
+          python generate_json.py
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Voeg alleen wijzigingen toe
+          git add data/generated.json
+
+          # Check of er commitbare wijzigingen zijn
+          if git diff --cached --quiet; then
+            echo "Geen wijzigingen om te committen"
+            exit 0
+          fi
+
+          git commit -m "Update JSON [skip ci]"
+          git push
